@@ -114,7 +114,7 @@ internal object CharMappings {
     private fun initC2TC(c: Char, cl: Byte) = initC2TC(c.code, cl)
 }
 
-internal fun charToTokenClass(c: Int) = if (c < CTC_MAX) CHAR_TO_TOKEN[c] else TC_OTHER
+internal fun charToTokenClass(c: Char) = if (c.code < CTC_MAX) CHAR_TO_TOKEN[c.code] else TC_OTHER
 
 internal fun escapeToChar(c: Int): Char = if (c < ESC2C_MAX) ESCAPE_2_CHAR[c] else INVALID
 
@@ -210,7 +210,7 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
         if (expected == STRING && consumeStringLenient() == NULL) {
             fail("Expected string literal but 'null' literal was found.\n$coerceInputValuesHint", currentPosition - 4)
         }
-        fail(charToTokenClass(expected.code))
+        fail(charToTokenClass(expected))
     }
 
     private fun fail(expectedToken: Byte) {
@@ -242,7 +242,7 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
                 continue
             }
             currentPosition = cpos
-            return charToTokenClass(ch.code)
+            return charToTokenClass(ch)
         }
         currentPosition = cpos
         return TC_EOF
@@ -256,7 +256,7 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
             cpos = definitelyNotEof(cpos)
             if (cpos == -1) break
             val ch = source[cpos++]
-            return when (val tc = charToTokenClass(ch.code)) {
+            return when (val tc = charToTokenClass(ch)) {
                 TC_WHITESPACE -> continue
                 else -> {
                     currentPosition = cpos
@@ -286,7 +286,7 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
          * If we're in lenient mode, this might be the string with 'null' prefix,
          * distinguish it from 'null'
          */
-        if (len > 4 && charToTokenClass(source[current + 4].code) == TC_OTHER) return true
+        if (len > 4 && charToTokenClass(source[current + 4]) == TC_OTHER) return true
         currentPosition = current + 4
         return false
     }
@@ -431,7 +431,7 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
         }
         var current = skipWhitespaces()
         if (current >= source.length || current == -1) fail("EOF", current)
-        val token = charToTokenClass(source[current].code)
+        val token = charToTokenClass(source[current])
         if (token == TC_STRING) {
             return consumeString()
         }
@@ -440,7 +440,7 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
             fail("Expected beginning of the string, but got ${source[current]}")
         }
         var usedAppend = false
-        while (charToTokenClass(source[current].code) == TC_OTHER) {
+        while (charToTokenClass(source[current]) == TC_OTHER) {
             ++current
             if (current >= source.length) {
                 usedAppend = true
@@ -448,8 +448,8 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
                 current = definitelyNotEof(current)
                 if (current == -1) {
                     // to handle plain lenient strings
-                    current = source.length
-                    break
+                    currentPosition = current
+                    return decodedString(0, 0)
                 }
             }
         }
@@ -564,7 +564,8 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
          * that doesn't allocate and also doesn't support any radix but 10
          */
         var current = skipWhitespaces()
-        ensureHaveChars()
+        current = definitelyNotEof(current)
+//        ensureHaveChars()
         if (current >= source.length || current == -1) fail("EOF")
         val hasQuotation = if (source[current] == STRING) {
             // Check it again
@@ -586,7 +587,7 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
                 ++current
                 continue
             }
-            val token = charToTokenClass(ch.code)
+            val token = charToTokenClass(ch)
             if (token != TC_OTHER) break
             ++current
             hasChars = current != source.length
