@@ -71,7 +71,7 @@ open class TwitterFeedStreamBenchmark {
     @Benchmark
     fun decodeMicroTwitterStream(): MicroTwitterFeed {
         return resource.openStream().use {
-            jsonIgnoreUnknwn.decodeFromStream(MicroTwitterFeed.serializer(), it.buffered(16 * 16 * 1024))
+            jsonIgnoreUnknwn.decodeFromStream(MicroTwitterFeed.serializer(), it.buffered())
         }
     }
 

@@ -4,7 +4,7 @@
 
 package kotlinx.serialization.json
 
-import kotlinx.serialization.json.internal.DescriptorSchemaCache
+import kotlinx.serialization.json.internal.*
 
 @Suppress("DEPRECATION_ERROR")
 internal actual val Json.schemaCache: DescriptorSchemaCache get() = this._schemaCache

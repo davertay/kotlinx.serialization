@@ -274,8 +274,8 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
      * `false` otherwise and consumes it.
      */
     fun tryConsumeNotNull(): Boolean {
-        val current = skipWhitespaces()
-        ensureHaveChars()
+        var current = skipWhitespaces()
+        current = definitelyNotEof(current)
         // Cannot consume null due to EOF, maybe something else
         val len = source.length - current
         if (len < 4 || current == -1) return true
@@ -322,7 +322,7 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
         return string
     }
 
-    open fun indexOf(char: Char, startPos: Int) = (source).indexOf(char, startPos)
+    open fun indexOf(char: Char, startPos: Int) = source.indexOf(char, startPos)
     open fun substring(startPos: Int, endPos: Int) =  source.substring(startPos, endPos)
 
     /*
@@ -447,7 +447,7 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
                 appendRange(currentPosition, current)
                 current = definitelyNotEof(current)
                 if (current == -1) {
-                    // to handle plain lenient strings
+                    // to handle plain lenient strings, such as top-level
                     currentPosition = current
                     return decodedString(0, 0)
                 }
@@ -491,6 +491,10 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
                     fromHexChar(source, startPos + 3)).toChar()
         )
         return startPos + 4
+    }
+
+    internal inline fun require(condition: Boolean, position: Int = currentPosition, message: () -> String) {
+        if (!condition) fail(message(), position)
     }
 
     private fun fromHexChar(source: CharSequence, currentPosition: Int): Int {
@@ -565,7 +569,6 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
          */
         var current = skipWhitespaces()
         current = definitelyNotEof(current)
-//        ensureHaveChars()
         if (current >= source.length || current == -1) fail("EOF")
         val hasQuotation = if (source[current] == STRING) {
             // Check it again
@@ -642,9 +645,8 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
          * in 6-th bit and we leverage this fact, our implementation consumes boolean literals
          * in a case-insensitive manner.
          */
-        ensureHaveChars()
-        var current = start
-        if (current == source.length) fail("EOF")
+        var current = definitelyNotEof(start)
+        if (current >= source.length || current == -1) fail("EOF")
         return when (source[current++].code or asciiCaseMask) {
             't'.code -> {
                 consumeBooleanLiteral("rue", current)
@@ -675,8 +677,4 @@ internal open class JsonLexer(@JvmField protected var source: CharSequence) {
 
         currentPosition = current + literalSuffix.length
     }
-}
-
-internal inline fun JsonLexer.require(condition: Boolean, position: Int = -1, message: () -> String) {
-    if (!condition) fail(message(), position)
 }
